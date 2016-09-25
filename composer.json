@@ -3,9 +3,9 @@
     "description": "Laravel GeoServer REST API",
     "type": "library",
     "require": {
-        "php": "5.6",
-        "illuminate/support": "^5.3",
-        "illuminate/config": "^5.3"
+        "php": ">=5.6.4",
+        "illuminate/support": "^5.0",
+        "illuminate/config": "^5.0"
     },
     "license": "MIT",
     "authors": [
