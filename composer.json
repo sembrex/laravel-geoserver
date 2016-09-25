@@ -1,0 +1,23 @@
+{
+    "name": "karogis/geoserver",
+    "description": "Laravel GeoServer REST API",
+    "type": "library",
+    "require": {
+        "php": "5.6",
+        "illuminate/support": "^5.3",
+        "illuminate/config": "^5.3"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rifa'i M. Hanif",
+            "email": "hanreev@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Karogis\\GeoServer\\": "src/"
+        }
+    },
+    "minimum-stability": "dev"
+}
