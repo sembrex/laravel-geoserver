@@ -6,7 +6,7 @@ namespace Karogis\GeoServer;
 */
 class GeoServer
 {
-	private function get($request, array $header, $successCode=200, $method='GET', $data='')
+	private function exec($request, array $header, $successCode=200, $method='GET', $data='')
 	{
 	    $service = config('geoserver.url');
 	    $url = $service ."rest/". $request;
@@ -40,6 +40,44 @@ class GeoServer
 	    return $result;
 	}
 
+	private function execFeature($request, $name=null)
+	{
+	    $service = config('geoserver.url');
+	    $params = [
+	    	'service' => 'wfs',
+	    	'version' => '1.1.0',
+	    	'request' => $request,
+	    	'outputFormat' => 'application/json',
+	    ];
+
+	    if (!is_null($name)) {
+	    	$params['typeNames'] = $name;
+	    }
+
+	    $url = $service ."wfs?". http_build_query($params);
+	    $ch = curl_init($url);
+
+	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+
+	    $successCode = 200;
+
+	    $result = curl_exec($ch);
+
+	    $info = curl_getinfo($ch);
+	    if ($info['http_code'] != $successCode) {
+	      $msgStr = "# Unsuccessful request to ";
+	      $msgStr .= $url." [". $info['http_code']. "]\n";
+	      logger("[GeoServer]: $msgStr");
+	    } else {
+	      $msgStr = "# Successful request to ".$url."\n";
+	      logger("[GeoServer]: $msgStr");
+	    }
+
+	    curl_close($ch);
+	    return $result;
+	}
+
 	private function getRest($url, $output='json', $decode=false)
 	{
 		switch ($output) {
@@ -52,7 +90,7 @@ class GeoServer
 				break;
 		}
 
-		$result = $this->get($url, $header);
+		$result = $this->exec($url, $header);
 
 		if (!$result)
 			return false;
@@ -87,5 +125,10 @@ class GeoServer
 		}
 
 		return $this->getRest($url, $output, $decode);
+	}
+
+	public function getFeatureInfo($request = 'GetCapabilities', $name = null)
+	{
+		return $this->execFeature($request, $name);
 	}
 }
