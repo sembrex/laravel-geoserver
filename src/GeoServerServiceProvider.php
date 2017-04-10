@@ -40,11 +40,8 @@ class GeoServerServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app['geoserver'] = $this->app->share(
-            function($app)
-            {
-                return new GeoServer();
-            }
-        );
+        $this->app->singleton('geoserver', function ($app) {
+            return new GeoServer();
+        });
     }
 }

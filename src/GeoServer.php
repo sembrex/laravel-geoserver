@@ -6,129 +6,141 @@ namespace Karogis\GeoServer;
 */
 class GeoServer
 {
-	private function exec($request, array $header, $successCode=200, $method='GET', $data='')
-	{
-	    $service = config('geoserver.url');
-	    $url = $service ."rest/". $request;
-	    $ch = curl_init($url);
+    protected function exec($request, array $args = [])
+    {
+        $header = isset($args['header']) ? $args['header'] : [];
+        $successCode = isset($args['successCode']) ? $args['successCode'] : 200;
+        $method = isset($args['method']) ? $args['method'] : 'GET';
+        $data = isset($args['data']) ? $args['data'] : null;
 
-	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	    $passwordStr = config('geoserver.username').':'.config('geoserver.password');
-	    curl_setopt($ch, CURLOPT_USERPWD, $passwordStr);
-	    curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        $service = config('geoserver.url');
+        $url = $service ."rest/". $request;
+        $ch = curl_init($url);
 
-	    $successCode = 200;
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $passwordStr = config('geoserver.username').':'.config('geoserver.password');
+        curl_setopt($ch, CURLOPT_USERPWD, $passwordStr);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
 
-	    if ($method == 'POST') {
-    		curl_setopt($ch, CURLOPT_POST, True);
-    		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-	    }
+        if ($method == 'POST') {
+            curl_setopt($ch, CURLOPT_POST, True);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        }
 
-	    $result = curl_exec($ch);
+        $result = curl_exec($ch);
 
-	    $info = curl_getinfo($ch);
-	    if ($info['http_code'] != $successCode) {
-	      $msgStr = "# Unsuccessful request to ";
-	      $msgStr .= $url." [". $info['http_code']. "]\n";
-	      logger("[GeoServer]: $msgStr");
-	    } else {
-	      $msgStr = "# Successful request to ".$url."\n";
-	      logger("[GeoServer]: $msgStr");
-	    }
+        $info = curl_getinfo($ch);
+        if ($info['http_code'] != $successCode) {
+          $msgStr = "# Unsuccessful request to ";
+          $msgStr .= $url." [". $info['http_code']. "]\n";
+          logger("[GeoServer]: $msgStr");
+        } else {
+          $msgStr = "# Successful request to ".$url."\n";
+          logger("[GeoServer]: $msgStr");
+        }
 
-	    curl_close($ch);
-	    return $result;
-	}
+        curl_close($ch);
+        return $result;
+    }
 
-	private function execFeature($request, $name=null)
-	{
-	    $service = config('geoserver.url');
-	    $params = [
-	    	'service' => 'wfs',
-	    	'version' => '1.1.0',
-	    	'request' => $request,
-	    	'outputFormat' => 'application/json',
-	    ];
+    protected function execFeature($request, $name=null)
+    {
+        $service = config('geoserver.url');
+        $params = [
+            'service' => 'wfs',
+            'version' => '1.1.0',
+            'request' => $request,
+            'outputFormat' => 'application/json',
+        ];
 
-	    if (!is_null($name)) {
-	    	$params['typeNames'] = $name;
-	    }
+        if (!is_null($name)) {
+            $params['typeNames'] = $name;
+        }
 
-	    $url = $service ."wfs?". http_build_query($params);
-	    $ch = curl_init($url);
+        $url = $service ."wfs?". http_build_query($params);
+        $ch = curl_init($url);
 
-	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
 
-	    $successCode = 200;
+        $successCode = 200;
 
-	    $result = curl_exec($ch);
+        $result = curl_exec($ch);
 
-	    $info = curl_getinfo($ch);
-	    if ($info['http_code'] != $successCode) {
-	      $msgStr = "# Unsuccessful request to ";
-	      $msgStr .= $url." [". $info['http_code']. "]\n";
-	      logger("[GeoServer]: $msgStr");
-	    } else {
-	      $msgStr = "# Successful request to ".$url."\n";
-	      logger("[GeoServer]: $msgStr");
-	    }
+        $info = curl_getinfo($ch);
+        if ($info['http_code'] != $successCode) {
+          $msgStr = "# Unsuccessful request to ";
+          $msgStr .= $url." [". $info['http_code']. "]\n";
+          logger("[GeoServer]: $msgStr");
+        } else {
+          $msgStr = "# Successful request to ".$url."\n";
+          logger("[GeoServer]: $msgStr");
+        }
 
-	    curl_close($ch);
-	    return $result;
-	}
+        curl_close($ch);
+        return $result;
+    }
 
-	private function getRest($url, $output='json', $decode=false)
-	{
-		switch ($output) {
-			case 'xml':
-				$header = ['Accept: application/xml'];
-				break;
+    protected function getRest($url, $decode=false)
+    {
+        $header = ['Accept: application/json'];
 
-			default:
-				$header = ['Accept: application/json'];
-				break;
-		}
+        $result = $this->exec($url, compact('header'));
 
-		$result = $this->exec($url, $header);
+        if (!$result)
+            return false;
 
-		if (!$result)
-			return false;
+        switch ($decode) {
+            case 'array':
+                return json_decode($result, true);
+                break;
 
-		if ($output == 'json') {
-			if ($decode == 'object')
-				return json_decode($result);
-			elseif ($decode == 'array')
-				return json_decode($result, true);
-		}
+            case 'object':
+                return json_decode($result);
+                break;
 
-		return $result;
-	}
+            default:
+                return $result;
+                break;
+        }
+    }
 
-	public function getLayer($layer=null, $output='json', $decode=false)
-	{
-		if (is_null($layer)) {
-			$url = "layers.$output";
-		} else {
-			$url = "layers/$layer.$output";
-		}
+    public function getLayer($layer=null, $decode='object')
+    {
+        if (is_null($layer)) {
+            $url = "layers.json";
+        } else {
+            $url = "layers/$layer.json";
+        }
 
-		return $this->getRest($url, $output, $decode);
-	}
+        return $this->getRest($url, $decode);
+    }
 
-	public function getWorkspace($workspace=null, $output='json', $decode=false)
-	{
-		if (is_null($workspace)) {
-			$url = "workspaces.$output";
-		} else {
-			$url = "workspaces/$workspace.$output";
-		}
+    public function getWorkspace($workspace=null, $decode='object')
+    {
+        if (is_null($workspace)) {
+            $url = "workspaces.json";
+        } else {
+            $url = "workspaces/$workspace.json";
+        }
 
-		return $this->getRest($url, $output, $decode);
-	}
+        return $this->getRest($url, $decode);
+    }
 
-	public function getFeatureInfo($request = 'GetCapabilities', $name = null)
-	{
-		return $this->execFeature($request, $name);
-	}
+    public function getFeatureInfo($request = 'GetCapabilities', $name = null)
+    {
+        return $this->execFeature($request, $name);
+    }
+
+    public function getStyle($workspace, $style = null, $decode='object')
+    {
+        if (is_null($style)) {
+            $url = "workspaces/$workspace/styles.json";
+        } else {
+            $url = "workspaces/$workspace/styles/$style.sld";
+            $decode = false;
+        }
+
+        return $this->getRest($url, $decode);
+    }
 }
